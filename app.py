@@ -5,6 +5,9 @@ import pickle
 import re
 import pandas as pd
 
+# ✅ MUST be the first Streamlit command
+st.set_page_config(page_title="Vibe Bot", page_icon="🎭", layout="centered")
+
 # ========== CONFIG ==========
 MAX_LEN = 100
 EMBED_DIM = 128
@@ -33,16 +36,15 @@ with open("vocab.pkl", "rb") as f:
 with open("label_encoder.pkl", "rb") as f:
     label_encoder = pickle.load(f)
 
-model = BiLSTMWithAttention(len(vocab), EMBED_DIM, HIDDEN_DIM, len(label_encoder.classes_)).to(DEVICE)
+model = BiLSTMWithAttention(
+    vocab_size=len(vocab),
+    embed_dim=EMBED_DIM,
+    hidden_dim=HIDDEN_DIM,
+    output_dim=len(label_encoder.classes_)
+).to(DEVICE)
+
 model.load_state_dict(torch.load("bilstm_model.pt", map_location=DEVICE))
 model.eval()
-
-# Load CSV with recommendations
-@st.cache_data
-def load_recommendations():
-    return pd.read_csv("recommendations.csv")  # Must have: category,title,link,emotion
-
-recommendation_df = load_recommendations()
 
 # ========== HELPER FUNCTIONS ==========
 def tokenize(text):
@@ -61,8 +63,17 @@ def predict_emotion(text):
         pred = torch.argmax(output, dim=1).item()
     return label_encoder.inverse_transform([pred])[0]
 
+# ========== LOAD CSV FILES ==========
+@st.cache_data
+def load_csv_data():
+    songs = pd.read_csv("emotion_labeled_tracks.csv")
+    movies = pd.read_csv("emotion_based_movies_with_links.csv")
+    books = pd.read_csv("emotion_labeled_books.csv")
+    return songs, movies, books
+
+songs_df, movies_df, books_df = load_csv_data()
+
 # ========== STREAMLIT UI ==========
-st.set_page_config(page_title="Vibe Bot", page_icon="🎭", layout="centered")
 st.markdown("""
     <style>
     .title {text-align: center; font-size: 2.5em; color: #4B8BBE; margin-bottom: 20px;}
@@ -75,17 +86,6 @@ st.markdown("<div class='title'>🎭 Vibe Bot</div>", unsafe_allow_html=True)
 
 user_input = st.text_input("💬 Describe how you're feeling:")
 
-# ========== RECOMMENDATIONS ==========
-# ========== LOAD CSV FILES ==========
-@st.cache_data
-def load_csv_data():
-    songs = pd.read_csv("emotion_labeled_tracks.csv")
-    movies = pd.read_csv("emotion_based_movies_with_links.csv")
-    books = pd.read_csv("emotion_labeled_books.csv")
-    return songs, movies, books
-
-songs_df, movies_df, books_df = load_csv_data()
-# ========== RECOMMENDATIONS ==========
 if user_input:
     emotion = predict_emotion(user_input).lower()
     st.success(f"🎯 Detected Emotion: **{emotion.capitalize()}**")
@@ -99,7 +99,7 @@ if user_input:
 
     if not song_recs.empty:
         has_any = True
-        st.markdown(f"<div class='category-title'>🎵 Top 5 Songs</div>", unsafe_allow_html=True)
+        st.markdown("<div class='category-title'>🎵 Top 5 Songs</div>", unsafe_allow_html=True)
         for _, row in song_recs.sample(n=min(5, len(song_recs))).iterrows():
             title = row["track_name"]
             artist = row["artist_name"]
@@ -111,7 +111,7 @@ if user_input:
 
     if not movie_recs.empty:
         has_any = True
-        st.markdown(f"<div class='category-title'>🎥 Top 5 Movies</div>", unsafe_allow_html=True)
+        st.markdown("<div class='category-title'>🎥 Top 5 Movies</div>", unsafe_allow_html=True)
         for _, row in movie_recs.sample(n=min(5, len(movie_recs))).iterrows():
             title = row["title"]
             overview = row["overview"]
@@ -123,7 +123,7 @@ if user_input:
 
     if not book_recs.empty:
         has_any = True
-        st.markdown(f"<div class='category-title'>📚 Top 5 Books</div>", unsafe_allow_html=True)
+        st.markdown("<div class='category-title'>📚 Top 5 Books</div>", unsafe_allow_html=True)
         for _, row in book_recs.sample(n=min(5, len(book_recs))).iterrows():
             title = row["title"]
             author = row["authors"]
