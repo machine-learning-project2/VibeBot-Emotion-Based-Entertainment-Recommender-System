@@ -7,6 +7,7 @@ import pandas as pd
 import nltk
 
 nltk.download('wordnet')
+
 # ✅ MUST be the first Streamlit command
 st.set_page_config(page_title="Vibe Bot", page_icon="🎭", layout="centered")
 
@@ -89,51 +90,67 @@ st.markdown("<div class='title'>🎭 Vibe Bot</div>", unsafe_allow_html=True)
 user_input = st.text_input("💬 Describe how you're feeling:")
 
 if user_input:
-    emotion = predict_emotion(user_input).lower()
-    st.success(f"🎯 Detected Emotion: **{emotion.capitalize()}**")
+    # ✅ Step 1: Clean & tokenize
+    cleaned_input = user_input.strip()
+    words = tokenize(cleaned_input)
+    valid_words = [w for w in words if w.isalpha()]  # Only alphabetic words
 
-    # Filter each CSV by emotion
-    song_recs = songs_df[songs_df['emotion'].str.lower() == emotion]
-    movie_recs = movies_df[movies_df['emotion'].str.lower() == emotion]
-    book_recs = books_df[books_df['emotion'].str.lower() == emotion]
+    # ✅ Step 2: Basic length/character check
+    if not valid_words or len(" ".join(valid_words)) < 3:
+        st.error("⚠️ Please enter a valid sentence describing your feeling (not just numbers or symbols).")
+    else:
+        # ✅ Step 3: Vocabulary check
+        known_tokens = [w for w in valid_words if w in vocab]
 
-    has_any = False
+        if not known_tokens:
+            st.error("⚠️ Sorry, I couldn't understand those words. Try describing your feeling in another way.")
+        else:
+            # ✅ Step 4: Predict emotion
+            emotion = predict_emotion(cleaned_input).lower()
+            st.success(f"🎯 Detected Emotion: **{emotion.capitalize()}**")
 
-    if not song_recs.empty:
-        has_any = True
-        st.markdown("<div class='category-title'>🎵 Top 5 Songs</div>", unsafe_allow_html=True)
-        for _, row in song_recs.sample(n=min(5, len(song_recs))).iterrows():
-            title = row["track_name"]
-            artist = row["artist_name"]
-            link = row["track_url"]
-            st.markdown(
-                f'<div class="recommendation-list">• <a href="{link}" target="_blank">{title}</a> by <i>{artist}</i></div>',
-                unsafe_allow_html=True
-            )
+            # Filter each CSV by emotion
+            song_recs = songs_df[songs_df['emotion'].str.lower() == emotion]
+            movie_recs = movies_df[movies_df['emotion'].str.lower() == emotion]
+            book_recs = books_df[books_df['emotion'].str.lower() == emotion]
 
-    if not movie_recs.empty:
-        has_any = True
-        st.markdown("<div class='category-title'>🎥 Top 5 Movies</div>", unsafe_allow_html=True)
-        for _, row in movie_recs.sample(n=min(5, len(movie_recs))).iterrows():
-            title = row["title"]
-            overview = row["overview"]
-            link = row["link"]
-            st.markdown(
-                f'<div class="recommendation-list">• <a href="{link}" target="_blank">{title}</a><br><small>{overview}</small></div>',
-                unsafe_allow_html=True
-            )
+            has_any = False
 
-    if not book_recs.empty:
-        has_any = True
-        st.markdown("<div class='category-title'>📚 Top 5 Books</div>", unsafe_allow_html=True)
-        for _, row in book_recs.sample(n=min(5, len(book_recs))).iterrows():
-            title = row["title"]
-            author = row["authors"]
-            link = row["link"]
-            st.markdown(
-                f'<div class="recommendation-list">• <a href="{link}" target="_blank">{title}</a> by <i>{author}</i></div>',
-                unsafe_allow_html=True
-            )
+            if not song_recs.empty:
+                has_any = True
+                st.markdown("<div class='category-title'>🎵 Top 5 Songs</div>", unsafe_allow_html=True)
+                for _, row in song_recs.sample(n=min(5, len(song_recs))).iterrows():
+                    title = row["track_name"]
+                    artist = row["artist_name"]
+                    link = row["track_url"]
+                    st.markdown(
+                        f'<div class="recommendation-list">• <a href="{link}" target="_blank">{title}</a> by <i>{artist}</i></div>',
+                        unsafe_allow_html=True
+                    )
 
-    if not has_any:
-        st.warning("😕 Sorry, no recommendations found for this emotion.")
+            if not movie_recs.empty:
+                has_any = True
+                st.markdown("<div class='category-title'>🎥 Top 5 Movies</div>", unsafe_allow_html=True)
+                for _, row in movie_recs.sample(n=min(5, len(movie_recs))).iterrows():
+                    title = row["title"]
+                    overview = row["overview"]
+                    link = row["link"]
+                    st.markdown(
+                        f'<div class="recommendation-list">• <a href="{link}" target="_blank">{title}</a><br><small>{overview}</small></div>',
+                        unsafe_allow_html=True
+                    )
+
+            if not book_recs.empty:
+                has_any = True
+                st.markdown("<div class='category-title'>📚 Top 5 Books</div>", unsafe_allow_html=True)
+                for _, row in book_recs.sample(n=min(5, len(book_recs))).iterrows():
+                    title = row["title"]
+                    author = row["authors"]
+                    link = row["link"]
+                    st.markdown(
+                        f'<div class="recommendation-list">• <a href="{link}" target="_blank">{title}</a> by <i>{author}</i></div>',
+                        unsafe_allow_html=True
+                    )
+
+            if not has_any:
+                st.warning("😕 Sorry, no recommendations found for this emotion.")
