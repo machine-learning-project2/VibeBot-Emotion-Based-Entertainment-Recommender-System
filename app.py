@@ -4,7 +4,9 @@ import torch.nn as nn
 import pickle
 import re
 import pandas as pd
+import nltk
 
+nltk.download('wordnet')
 # ✅ MUST be the first Streamlit command
 st.set_page_config(page_title="Vibe Bot", page_icon="🎭", layout="centered")
 
